@@ -6,56 +6,83 @@
 <title>早押しボタン</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-  :root { --bg:#111827; --panel:#1f2937; --text:#f9fafb; --muted:#9ca3af; --accent:#f59e0b; }
+  :root { --bg:#111827; --panel:#1f2937; --line:#374151; --text:#f9fafb; --muted:#9ca3af; --accent:#f59e0b; --ok:#22c55e; --ng:#ef4444; }
   * { box-sizing:border-box; }
-  html,body { margin:0; height:100%; background:var(--bg); color:var(--text);
+  html,body { margin:0; min-height:100%; background:var(--bg); color:var(--text);
     font-family:-apple-system,"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif; }
   button { font:inherit; cursor:pointer; }
+  button:disabled { cursor:default; opacity:.35; }
   .hidden { display:none !important; }
-  .status { position:fixed; top:8px; right:12px; font-size:13px; color:var(--muted); }
-  .status.ok::before { content:"● "; color:#22c55e; }
-  .status.ng::before { content:"● "; color:#ef4444; }
+  .status { position:fixed; top:8px; right:12px; font-size:13px; color:var(--muted); z-index:10; }
+  .status.ok::before { content:"● "; color:var(--ok); }
+  .status.ng::before { content:"● "; color:var(--ng); }
 
   /* 準備画面 */
   #setup { max-width:560px; margin:0 auto; padding:24px 16px; }
   #setup h1 { font-size:28px; }
   #setup label { display:block; margin:12px 0 4px; color:var(--muted); }
-  #setup input, #setup select { width:100%; padding:10px; font-size:18px; border-radius:8px; border:1px solid #374151; background:var(--panel); color:var(--text); }
-  .row { display:flex; gap:8px; align-items:center; }
-  .row .chip { width:20px; height:20px; border-radius:50%; flex:none; }
-  .btn { padding:14px 20px; font-size:20px; border:none; border-radius:10px; background:var(--accent); color:#111; font-weight:700; }
-  .btn.sub { background:#374151; color:var(--text); font-weight:400; font-size:16px; padding:10px 14px; }
+  #setup input[type=text], #setup select { width:100%; padding:10px; font-size:18px; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--text); }
+  #setup label.check { color:var(--text); display:flex; gap:8px; align-items:center; margin-top:16px; }
+  #setup label.check input { width:20px; height:20px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .chip { width:20px; height:20px; border-radius:50%; flex:none; }
+  .btn { padding:12px 18px; font-size:20px; border:none; border-radius:10px; background:var(--accent); color:#111; font-weight:700; }
+  .btn.ok { background:var(--ok); }
+  .btn.ng { background:var(--ng); color:#fff; }
+  .btn.sub { background:var(--line); color:var(--text); font-weight:400; font-size:15px; padding:8px 12px; }
+  .btn kbd { font-size:12px; opacity:.7; font-family:inherit; margin-left:4px; }
   .note { color:var(--muted); font-size:14px; line-height:1.6; }
 
   /* 司会画面 */
-  #host { padding:16px; max-width:1100px; margin:0 auto; }
+  #host { padding:16px; max-width:1200px; margin:0 auto; }
   #host header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-  #roundLabel { font-size:28px; font-weight:700; }
-  #ranking { margin-top:16px; display:flex; flex-direction:column; gap:12px; min-height:50vh; }
-  .rank { display:flex; align-items:center; gap:20px; padding:18px 24px; border-radius:14px; background:var(--panel); font-size:32px; }
-  .rank .pos { font-size:40px; font-weight:800; width:90px; }
+  #roundLabel { font-size:30px; font-weight:800; }
+  .phase { font-size:16px; padding:4px 12px; border-radius:999px; margin-left:10px; vertical-align:middle; }
+  .phase.ready { background:var(--line); }
+  .phase.open { background:var(--accent); color:#111; }
+  .phase.done { background:var(--ok); color:#111; }
+  #ranking { margin-top:16px; display:flex; flex-direction:column; gap:10px; min-height:40vh; }
+  .rank { display:flex; align-items:center; gap:20px; padding:14px 24px; border-radius:14px; background:var(--panel); font-size:30px; }
+  .rank .pos { font-size:34px; font-weight:800; width:90px; }
   .rank .name { flex:1; font-weight:700; }
-  .rank .diff { color:var(--muted); font-size:24px; }
-  .rank.first { font-size:56px; padding:28px 24px; outline:6px solid var(--accent); }
-  .rank.first .pos { font-size:64px; width:140px; }
-  .close { color:var(--accent); font-size:18px; margin-left:8px; }
-  .waiting { color:var(--muted); font-size:28px; text-align:center; margin-top:15vh; }
-  #qrPanel { margin-top:24px; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; }
+  .rank .diff { color:var(--muted); font-size:22px; }
+  .rank .tag { font-size:22px; font-weight:800; padding:4px 14px; border-radius:8px; }
+  .rank.answer { font-size:52px; padding:26px 24px; outline:6px solid var(--accent); }
+  .rank.answer .pos { font-size:60px; width:140px; }
+  .rank.answer .tag { background:var(--accent); color:#111; }
+  .rank.isng, .rank.isfly { opacity:.45; }
+  .rank.isng .tag, .rank.isfly .tag { background:var(--ng); color:#fff; }
+  .rank.isok { outline:6px solid var(--ok); font-size:52px; padding:26px 24px; }
+  .rank.isok .tag { background:var(--ok); color:#111; }
+  .close { color:var(--accent); font-size:16px; margin-left:8px; }
+  .waiting { color:var(--muted); font-size:28px; text-align:center; margin-top:12vh; }
+  #scores { margin-top:20px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .score { background:var(--panel); border-radius:12px; padding:10px 12px; text-align:center; border-top:8px solid; }
+  .score .sname { font-size:18px; font-weight:700; }
+  .score .spt { font-size:44px; font-weight:800; line-height:1.2; }
+  .score .sadj button { width:36px; height:30px; border:none; border-radius:6px; background:var(--line); color:var(--text); }
+  .score.top .spt { color:var(--accent); }
+  .tools { margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  #qrPanel { margin-top:16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; }
   .qrCard { background:#fff; color:#111; border-radius:12px; padding:16px; text-align:center; }
   .qrCard .tname { font-size:22px; font-weight:800; margin-bottom:8px; }
   .qrCard .qr { display:flex; justify-content:center; }
   .qrCard a { font-size:11px; word-break:break-all; color:#555; }
 
   /* チーム(スマホ)画面 */
-  #player { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; padding:16px; }
-  #pTeam { font-size:32px; font-weight:800; text-align:center; }
-  #pButton { width:min(78vw,78vh); height:min(78vw,78vh); max-width:420px; max-height:420px; border-radius:50%;
+  #player { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; padding:16px; transition:background .2s; }
+  #pTeam { font-size:30px; font-weight:800; text-align:center; }
+  #pScore { font-size:18px; opacity:.9; }
+  #pButton { width:min(74vw,62vh); height:min(74vw,62vh); max-width:420px; max-height:420px; border-radius:50%;
     border:10px solid rgba(255,255,255,.85); font-size:48px; font-weight:900; color:#fff;
     box-shadow:0 14px 0 rgba(0,0,0,.35); touch-action:manipulation; -webkit-user-select:none; user-select:none;
     -webkit-tap-highlight-color:transparent; }
   #pButton:active { transform:translateY(8px); box-shadow:0 6px 0 rgba(0,0,0,.35); }
-  #pButton:disabled { filter:grayscale(.8) brightness(.6); transform:none; box-shadow:none; }
-  #pMsg { font-size:22px; text-align:center; min-height:2em; }
+  #pButton:disabled { filter:grayscale(.8) brightness(.6); transform:none; box-shadow:none; opacity:1; }
+  #pMsg { font-size:24px; font-weight:700; text-align:center; min-height:2.4em; text-shadow:0 1px 3px rgba(0,0,0,.4); }
+  #player.answer #pButton { filter:none; animation:pulse .7s infinite alternate; }
+  #player.correct { background:var(--ok) !important; }
+  @keyframes pulse { from { transform:scale(1); } to { transform:scale(1.06); } }
 </style>
 </head>
 <body>
@@ -68,25 +95,35 @@
   <label>チーム数</label>
   <select id="teamCount"></select>
   <div id="teamNames"></div>
+  <label class="check"><input type="checkbox" id="optFly"> フライング(受付開始前に押す)をお手つきにする</label>
+  <p class="note" style="margin:4px 0 0 28px">オフ: 受付開始まではボタンが押せません。<br>オン: いつでも押せますが、早すぎるとその問題は回答できません。</p>
+  <label class="check"><input type="checkbox" id="optMinus"> 不正解でマイナス1点</label>
   <label>通信方法</label>
   <select id="mode">
     <option value="net">本番(スマホから押す)</option>
     <option value="local">練習(このPCのタブ同士だけで試す)</option>
   </select>
   <p style="margin-top:24px"><button class="btn" id="startBtn">司会画面を開く</button></p>
-  <p class="note">司会画面のURLをブックマークしておくと、ページを閉じても同じQRコードのまま再開できます。</p>
+  <p class="note">司会画面のURLをブックマークしておくと、ページを閉じても同じQRコード・同じ得点のまま再開できます。</p>
 </section>
 
 <!-- 司会画面 -->
 <section id="host" class="hidden">
   <header>
-    <div id="roundLabel">第1問</div>
+    <div><span id="roundLabel">第1問</span><span id="phaseLabel" class="phase"></span></div>
     <div class="row">
-      <button class="btn" id="resetBtn">次の問題へ(スペースキー)</button>
-      <button class="btn sub" id="qrBtn">QRコードを隠す</button>
+      <button class="btn" id="openBtn">受付開始<kbd>Enter</kbd></button>
+      <button class="btn ok" id="okBtn">○ 正解<kbd>O</kbd></button>
+      <button class="btn ng" id="ngBtn">× 不正解<kbd>X</kbd></button>
+      <button class="btn sub" id="nextBtn">次の問題へ<kbd>Space</kbd></button>
     </div>
   </header>
   <div id="ranking"></div>
+  <div id="scores"></div>
+  <div class="tools">
+    <button class="btn sub" id="qrBtn">QRコードを隠す</button>
+    <button class="btn sub" id="resetScoreBtn">得点をリセット</button>
+  </div>
   <div id="qrPanel"></div>
 </section>
 
@@ -95,6 +132,7 @@
   <div id="pTeam"></div>
   <button id="pButton" disabled>押す!</button>
   <div id="pMsg">接続中…</div>
+  <div id="pScore"></div>
 </section>
 
 <script>
@@ -106,12 +144,13 @@ const CLOSE_MS = 150; // これより差が小さいと「僅差」と表示
 const params = new URLSearchParams(location.search);
 const room = params.get("room");
 const isLocal = params.get("local") === "1";
+const flyMode = params.get("fly") === "1";
+const minusMode = params.get("minus") === "1";
 const teamParam = params.get("team");
 const $ = id => document.getElementById(id);
 
 function setStatus(ok, text) {
   const s = $("status");
-  s.classList.remove("hidden");
   s.className = "status " + (ok ? "ok" : "ng");
   s.textContent = text;
 }
@@ -159,18 +198,36 @@ function connect(onMsg, { replay }) {
   };
 }
 
-function teamsFromParams() {
-  try { return JSON.parse(params.get("teams")); } catch { return null; }
-}
-
 function teamUrl(i, name) {
   const u = new URL(location.href.split("?")[0]);
   u.searchParams.set("room", room);
   u.searchParams.set("team", String(i));
   u.searchParams.set("name", name);
+  if (flyMode) u.searchParams.set("fly", "1");
   if (isLocal) u.searchParams.set("local", "1");
   return u.toString();
 }
+
+// ---- 効果音(司会PC) ----
+let audio = null;
+function tone(freq, start, dur, type = "sine", vol = 0.25) {
+  try {
+    audio = audio || new AudioContext();
+    const t = audio.currentTime + start;
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(audio.destination);
+    o.start(t); o.stop(t + dur);
+  } catch {}
+}
+const SOUND = {
+  buzz()    { tone(1200, 0, 0.12, "square", 0.2); tone(1600, 0.12, 0.35, "square", 0.2); },
+  correct() { tone(988, 0, 0.35); tone(784, 0.35, 0.7); },
+  wrong()   { tone(140, 0, 0.7, "sawtooth", 0.3); },
+  open()    { tone(660, 0, 0.12, "triangle"); },
+};
 
 // ---- 準備画面 ----
 function showSetup() {
@@ -190,6 +247,8 @@ function showSetup() {
       chip.className = "chip";
       chip.style.background = COLORS[i];
       const inp = document.createElement("input");
+      inp.type = "text";
+      inp.style.flex = "1";
       inp.value = old[i] || DEFAULT_NAMES[i];
       row.append(chip, inp);
       box.append(lab, row);
@@ -203,79 +262,161 @@ function showSetup() {
     const u = new URL(location.href.split("?")[0]);
     u.searchParams.set("room", id);
     u.searchParams.set("teams", JSON.stringify(names));
+    if ($("optFly").checked) u.searchParams.set("fly", "1");
+    if ($("optMinus").checked) u.searchParams.set("minus", "1");
     if ($("mode").value === "local") u.searchParams.set("local", "1");
     location.href = u.toString();
   };
 }
 
 // ---- 司会画面 ----
+// phase: ready(受付前) → open(受付中) → done(正解が出た)
 function showHost() {
-  const names = teamsFromParams() || DEFAULT_NAMES.slice(0, 4);
+  let names;
+  try { names = JSON.parse(params.get("teams")); } catch {}
+  names = names || DEFAULT_NAMES.slice(0, 4);
   $("host").classList.remove("hidden");
-  const key = "hayaoshi-round-" + room;
-  let round = +(localStorage.getItem(key) || 1);
-  let presses = []; // {team, at}
-  let audio = null;
 
-  function beep() {
-    try {
-      audio = audio || new AudioContext();
-      const o = audio.createOscillator(), g = audio.createGain();
-      o.type = "square"; o.frequency.value = 880;
-      g.gain.setValueAtTime(0.25, audio.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.6);
-      o.connect(g).connect(audio.destination);
-      o.start(); o.stop(audio.currentTime + 0.6);
-    } catch {}
+  const key = "hayaoshi-state-" + room;
+  let S;
+  try { S = JSON.parse(localStorage.getItem(key)); } catch {}
+  if (!S || !Array.isArray(S.scores)) S = { round: 1, phase: "ready", presses: [], judged: {}, scores: names.map(() => 0) };
+
+  const save = () => { try { localStorage.setItem(key, JSON.stringify(S)); } catch {} };
+
+  // 今、回答権を持っているチーム
+  function answerTeam() {
+    if (S.phase === "done") return null;
+    const p = S.presses.find(p => !p.fly && !S.judged[p.team]);
+    return p ? p.team : null;
   }
 
+  let sendTimer = null;
+  function broadcast(delay = 0) {
+    clearTimeout(sendTimer);
+    sendTimer = setTimeout(() => {
+      link.send({
+        type: "state", round: S.round, phase: S.phase, answer: answerTeam(),
+        order: S.presses.filter(p => !p.fly).map(p => p.team),
+        flying: S.presses.filter(p => p.fly).map(p => p.team),
+        judged: S.judged, scores: S.scores,
+      }).catch(() => {});
+    }, delay);
+  }
+
+  function update(delay) { save(); render(); broadcast(delay); }
+
   function render() {
-    $("roundLabel").textContent = "第" + round + "問";
+    $("roundLabel").textContent = "第" + S.round + "問";
+    const ph = $("phaseLabel");
+    ph.className = "phase " + S.phase;
+    ph.textContent = { ready: "受付前", open: "受付中", done: "正解!" }[S.phase];
+    const ans = answerTeam();
+    $("openBtn").classList.toggle("hidden", S.phase !== "ready");
+    $("okBtn").disabled = $("ngBtn").disabled = ans === null;
+
     const box = $("ranking");
     box.innerHTML = "";
-    if (!presses.length) {
-      box.innerHTML = '<div class="waiting">ボタン受付中…</div>';
-      return;
+    if (!S.presses.length) {
+      box.innerHTML = '<div class="waiting">' + (S.phase === "ready" ? "曲を流すタイミングで「受付開始」" : "ボタン受付中…") + "</div>";
     }
-    const t0 = presses[0].at;
-    presses.forEach((p, i) => {
+    const real = S.presses.filter(p => !p.fly);
+    const t0 = real.length ? real[0].at : 0;
+    S.presses.forEach(p => {
       const div = document.createElement("div");
-      div.className = "rank" + (i === 0 ? " first" : "");
+      const j = S.judged[p.team];
+      let tag = "";
+      if (p.fly) { div.className = "rank isfly"; tag = "フライング"; }
+      else if (j === "ok") { div.className = "rank isok"; tag = "正解!"; }
+      else if (j === "ng") { div.className = "rank isng"; tag = "不正解"; }
+      else if (p.team === ans) { div.className = "rank answer"; tag = "回答権"; }
+      else div.className = "rank";
       div.style.borderLeft = "16px solid " + COLORS[p.team];
-      const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = (i + 1) + "位";
+      const pos = document.createElement("span"); pos.className = "pos";
+      pos.textContent = p.fly ? "—" : (real.indexOf(p) + 1) + "位";
       const nm = document.createElement("span"); nm.className = "name"; nm.textContent = names[p.team] || "?";
       div.append(pos, nm);
-      if (i > 0) {
+      if (!p.fly && p !== real[0]) {
         const ms = p.at - t0;
         const df = document.createElement("span"); df.className = "diff";
         df.textContent = "+" + (ms / 1000).toFixed(2) + "秒";
         if (ms < CLOSE_MS) { const c = document.createElement("span"); c.className = "close"; c.textContent = "僅差"; df.append(c); }
         div.append(df);
       }
+      if (tag) { const tg = document.createElement("span"); tg.className = "tag"; tg.textContent = tag; div.append(tg); }
       box.append(div);
+    });
+
+    const sc = $("scores");
+    sc.innerHTML = "";
+    const max = Math.max(...S.scores);
+    names.forEach((n, i) => {
+      const d = document.createElement("div");
+      d.className = "score" + (max > 0 && S.scores[i] === max ? " top" : "");
+      d.style.borderTopColor = COLORS[i];
+      const sn = document.createElement("div"); sn.className = "sname"; sn.textContent = n;
+      const sp = document.createElement("div"); sp.className = "spt"; sp.textContent = S.scores[i];
+      const adj = document.createElement("div"); adj.className = "sadj";
+      for (const [label, dv] of [["−", -1], ["+", 1]]) {
+        const b = document.createElement("button");
+        b.textContent = label;
+        b.onclick = () => { S.scores[i] += dv; update(0); };
+        adj.append(b, " ");
+      }
+      d.append(sn, sp, adj);
+      sc.append(d);
     });
   }
 
   const link = connect(msg => {
-    if (msg.type === "hello") link.send({ type: "round", round });
-    if (msg.type !== "buzz" || msg.round !== round) return;
+    if (msg.type === "hello") broadcast(0);
+    if (msg.type !== "buzz" || msg.round !== S.round) return;
     const t = msg.team | 0;
-    if (t < 0 || t >= names.length || presses.some(p => p.team === t)) return;
-    presses.push({ team: t, at: performance.now() });
-    if (presses.length === 1) beep();
-    render();
+    if (t < 0 || t >= names.length || S.presses.some(p => p.team === t)) return;
+    if (S.phase === "done") return;
+    if (S.phase === "ready") {
+      if (!flyMode) return;
+      S.presses.push({ team: t, at: Date.now(), fly: true });
+      SOUND.wrong();
+    } else {
+      const before = answerTeam();
+      S.presses.push({ team: t, at: Date.now() });
+      if (before === null && answerTeam() === t) SOUND.buzz();
+    }
+    update(250); // 同時に何件も来たら、まとめて1回だけ知らせる
   }, { replay: false });
 
-  function nextRound(advance) {
-    if (advance) round++;
-    localStorage.setItem(key, round);
-    presses = [];
-    render();
-    link.send({ type: "round", round }).catch(() => {});
-  }
-  $("resetBtn").onclick = () => { beep(); nextRound(true); };
+  const actions = {
+    open() { if (S.phase !== "ready") return; S.phase = "open"; SOUND.open(); update(0); },
+    ok() {
+      const t = answerTeam(); if (t === null) return;
+      S.judged[t] = "ok"; S.scores[t] += 1; S.phase = "done";
+      SOUND.correct(); update(0);
+    },
+    ng() {
+      const t = answerTeam(); if (t === null) return;
+      S.judged[t] = "ng"; if (minusMode) S.scores[t] -= 1;
+      SOUND.wrong();
+      if (answerTeam() !== null) setTimeout(SOUND.buzz, 800);
+      update(0);
+    },
+    next() { S.round++; S.phase = "ready"; S.presses = []; S.judged = {}; update(0); },
+  };
+  $("openBtn").onclick = actions.open;
+  $("okBtn").onclick = actions.ok;
+  $("ngBtn").onclick = actions.ng;
+  $("nextBtn").onclick = actions.next;
+  $("resetScoreBtn").onclick = () => {
+    if (!confirm("全チームの得点を0に戻します。よろしいですか?")) return;
+    S.scores = names.map(() => 0); update(0);
+  };
   document.addEventListener("keydown", e => {
-    if (e.code === "Space") { e.preventDefault(); $("resetBtn").click(); }
+    if (e.target.tagName === "INPUT") return;
+    const k = e.key.toLowerCase();
+    if (e.code === "Space") { e.preventDefault(); actions.next(); }
+    else if (k === "enter") { e.preventDefault(); actions.open(); }
+    else if (k === "o") actions.ok();
+    else if (k === "x") actions.ng();
   });
 
   // QRコード
@@ -296,35 +437,56 @@ function showHost() {
     $("qrBtn").textContent = panel.classList.contains("hidden") ? "QRコードを表示" : "QRコードを隠す";
   };
 
-  nextRound(false); // 今の問題番号をスマホに知らせる
+  update(0); // 今の状態をスマホに知らせる
 }
 
 // ---- チーム画面 ----
 function showPlayer() {
   const team = teamParam | 0;
   const name = params.get("name") || DEFAULT_NAMES[team];
-  $("player").classList.remove("hidden");
+  const P = $("player");
+  P.classList.remove("hidden");
   $("pTeam").textContent = name;
-  document.body.style.background = COLORS[team];
+  P.style.background = COLORS[team];
   const btn = $("pButton");
   btn.style.background = COLORS[team];
-  let round = null, pressedRound = null;
+  let st = null, pressedRound = null;
 
   function render() {
-    if (round === null) { btn.disabled = true; $("pMsg").textContent = "司会の開始待ち…"; return; }
-    if (pressedRound === round) { btn.disabled = true; btn.textContent = "済"; $("pMsg").textContent = "押しました!司会の画面を見てね"; return; }
-    btn.disabled = false; btn.textContent = "押す!"; $("pMsg").textContent = "第" + round + "問";
+    P.classList.remove("answer", "correct");
+    if (!st) { btn.disabled = true; $("pMsg").textContent = "司会の開始待ち…"; return; }
+    $("pScore").textContent = "得点: " + (st.scores?.[team] ?? 0) + "点 / 第" + st.round + "問";
+    const pressed = pressedRound === st.round;
+    const pos = st.order.indexOf(team);
+    const fly = st.flying.includes(team);
+    const j = st.judged[team];
+    const canPress = !pressed && pos < 0 && !fly && !j &&
+      (st.phase === "open" || (st.phase === "ready" && flyMode));
+    btn.disabled = !canPress;
+    btn.textContent = canPress ? "押す!" : "済";
+
+    let msg;
+    if (j === "ok") { msg = "正解!🎉"; P.classList.add("correct"); btn.textContent = "○"; }
+    else if (fly) msg = "フライング…この問題はお手つき";
+    else if (j === "ng") { msg = "不正解…次で挽回!"; btn.textContent = "×"; }
+    else if (st.answer === team) { msg = "回答権あり!答えて!"; P.classList.add("answer"); btn.textContent = "回答!"; }
+    else if (st.phase === "done") msg = "この問題は終了";
+    else if (pos >= 0) msg = (pos + 1) + "番目に押しました";
+    else if (pressed) msg = "押しました!";
+    else if (st.phase === "ready") msg = flyMode ? "まだ早い!(押すとお手つき)" : "曲が始まったら押せます";
+    else msg = "押せ!";
+    $("pMsg").textContent = msg;
   }
 
   const link = connect(msg => {
-    if (msg.type === "round") { round = msg.round; render(); }
-    if (msg.type === "buzz" && msg.team === team && msg.round === round) { pressedRound = round; render(); }
+    if (msg.type === "state") { st = msg; render(); }
   }, { replay: true });
 
   // clickより速く反応するpointerdownで送る
   btn.addEventListener("pointerdown", e => {
     e.preventDefault();
-    if (btn.disabled || round === null) return;
+    if (btn.disabled || !st) return;
+    const round = st.round;
     pressedRound = round;
     render();
     if (navigator.vibrate) navigator.vibrate(80);
